@@ -8,7 +8,7 @@ const ArrayList = std.ArrayList;
 // 4. sum
 
 pub fn main() !void {
-    const sum = try get_sum("./test_input.txt");
+    const sum = try get_sum("./input.txt");
     std.debug.print("sum: {d} ", .{sum});
 }
 
