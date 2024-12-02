@@ -2,13 +2,6 @@ const std = @import("std");
 
 const ArrayList = std.ArrayList;
 
-// 1. parse line by line
-// 2. parse each line with delimiter ' '
-// 3. parse tokens as ints
-// 4. iterate through the array of the numbers in the line
-// 5. check on each item ahead and current item, look at difference (must be between 1 and 3), look at ascending or descending (flag based on first analysis)
-// 6. keep count of safe reports
-
 pub fn main() !void {
     const safe_reports = try get_safe_report_count("./input.txt");
     std.debug.print("safe reports: {d} ", .{safe_reports});
@@ -57,17 +50,8 @@ fn get_safe_report_count(comptime path: []const u8) !u32 {
             // make sure the difference between levels is acceptable
             if (@abs(difference) > 3 or difference == 0) {
                 std.debug.print("found unsafe report with too much difference: {d} and {d} \n", .{ level, previous_level });
-                if (dampener_activated) {
-                    break;
-                } else {
-                    if (index == len - 1) {
-                        std.debug.print("report found safe \n", .{});
-
-                        safe_report_count += 1;
-                    }
-                    dampener_activated = true;
-                    continue;
-                }
+                if (handle_dampener(&dampener_activated, index, len, &safe_report_count)) break;
+                continue;
             }
 
             // establish the list sorting to maintain for all future levels
@@ -80,30 +64,12 @@ fn get_safe_report_count(comptime path: []const u8) !u32 {
             } else {
                 if (difference > 0 and is_descending) {
                     std.debug.print("found unsafe report with not descending: {d} and {d}, difference of {d} \n", .{ level, previous_level, difference });
-                    if (dampener_activated) {
-                        break;
-                    } else {
-                        if (index == len - 1) {
-                            std.debug.print("report found safe \n", .{});
-
-                            safe_report_count += 1;
-                        }
-                        dampener_activated = true;
-                        continue;
-                    }
+                    if (handle_dampener(&dampener_activated, index, len, &safe_report_count)) break;
+                    continue;
                 } else if (difference < 0 and is_ascending) {
                     std.debug.print("found unsafe report with not ascending: {d} and {d}, difference of {d} \n", .{ level, previous_level, difference });
-                    if (dampener_activated) {
-                        break;
-                    } else {
-                        if (index == len - 1) {
-                            std.debug.print("report found safe \n", .{});
-
-                            safe_report_count += 1;
-                        }
-                        dampener_activated = true;
-                        continue;
-                    }
+                    if (handle_dampener(&dampener_activated, index, len, &safe_report_count)) break;
+                    continue;
                 }
             }
 
@@ -119,6 +85,19 @@ fn get_safe_report_count(comptime path: []const u8) !u32 {
     }
 
     return safe_report_count;
+}
+
+fn handle_dampener(dampener_activated: *bool, index: usize, len: usize, safe_report_count: *u32) bool {
+    if (dampener_activated.*) {
+        return true;
+    } else {
+        if (index == len - 1) {
+            std.debug.print("report found safe \n", .{});
+            safe_report_count.* += 1;
+        }
+        dampener_activated.* = true;
+        return false;
+    }
 }
 
 test "simple test" {
