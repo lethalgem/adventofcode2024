@@ -7,7 +7,7 @@ const ArrayList = std.ArrayList;
 // 4. reuse the struct from yesterday
 
 pub fn main() !void {
-    const instances = try get_instances("./test_input_backward_up.txt");
+    const instances = try get_instances("./input.txt");
     std.debug.print("XMAS appears {d} times", .{instances});
 }
 
@@ -48,6 +48,9 @@ fn get_instances(comptime path: []const u8) !u32 {
     for (rows.items, 0..) |row, i| {
         std.debug.print("{c} \n", .{row.items});
         for (row.items, 0..) |_, j| {
+            var temp_debug_coords = ArrayList(Coords).init(allocator);
+            defer _ = temp_debug_coords.deinit();
+
             // search forward
             for (0..4) |x| {
                 if (j + x > row.items.len - 1) {
@@ -59,11 +62,16 @@ fn get_instances(comptime path: []const u8) !u32 {
                 if (search_results.xmas_found) {
                     // std.debug.print("found xmas \n", .{});
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
                     // std.debug.print("restarting the search \n", .{});
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
                 } else {
-                    try debug_coords.append(Coords{ .x = j + x, .y = i });
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i });
                 }
                 // std.debug.print("found a char we're looking for \n", .{});
             }
@@ -77,8 +85,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(row.items[j - x]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i });
                 }
             }
 
@@ -91,8 +106,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i - y].items[j]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j, .y = i - y });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j, .y = i - y });
                 }
             }
 
@@ -105,8 +127,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i + y].items[j]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j, .y = i + y });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j, .y = i + y });
                 }
             }
 
@@ -119,8 +148,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i + x].items[j + x]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i + x });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i + x });
                 }
             }
 
@@ -133,8 +169,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i - x].items[j + x]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i - x });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j + x, .y = i - x });
                 }
             }
 
@@ -147,8 +190,15 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i + x].items[j - x]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i + x });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i + x });
                 }
             }
 
@@ -161,18 +211,19 @@ fn get_instances(comptime path: []const u8) !u32 {
                 const search_results = xmas.look_for_next_char(rows.items[i - x].items[j - x]);
                 if (search_results.xmas_found) {
                     count += 1;
+                    xmas.reset();
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i - x });
+                    try debug_coords.appendSlice(temp_debug_coords.items);
                 } else if (!search_results.char_found) {
+                    temp_debug_coords.deinit();
+                    temp_debug_coords = ArrayList(Coords).init(allocator);
                     break;
+                } else {
+                    try temp_debug_coords.append(Coords{ .x = j - x, .y = i - x });
                 }
             }
         }
     }
-
-    // TODO: In progress on trying to print all of the good coords for any xmas found
-    // Currently is storing coords even when the full xmas isn't found
-    // Check simple tests below main to see what is wrong with solving the problem
-    // finding 17 of 17 xmas instances even though we find 18 of 18 when each direction is tested alone
-    // printing debug to try and see which instance is failing, then debug from there
 
     // create debug grid to print
     var debug_chars = ArrayList(ArrayList(u8)).init(allocator);
@@ -222,7 +273,10 @@ const Xmas = struct {
     fn look_for_next_char(self: *Xmas, char: u8) struct { char_found: bool, xmas_found: bool } {
         var found_char = false;
 
-        if (char == 'X' and !self.x) {
+        if (char == 'X' and self.x) {
+            self.reset();
+            found_char = false;
+        } else if (char == 'X' and !self.x) {
             self.reset();
             self.x = true;
             found_char = true;
@@ -337,4 +391,14 @@ test "simple test backward up 2" {
 test "simple test forward up 2" {
     const instances = try get_instances("./test_input_forward_up_2.txt");
     try std.testing.expectEqual(@as(u32, 4), instances);
+}
+
+test "simple test spiral" {
+    const instances = try get_instances("./test_input_spiral.txt");
+    try std.testing.expectEqual(@as(u32, 8), instances);
+}
+
+test "simple test spiral 2" {
+    const instances = try get_instances("./test_input_spiral_2.txt");
+    try std.testing.expectEqual(@as(u32, 8), instances);
 }
