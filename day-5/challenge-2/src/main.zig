@@ -1,11 +1,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-// 1. create a 2d array of x, y for each character
-// 2. iterate through each location
-// 3. on each iteration look at all possible angles for the xmas to appear
-// 4. reuse the struct from yesterday
-
 pub fn main() !void {
     const sum = try get_sum("./input.txt");
     std.debug.print("sum: {d}", .{sum});
@@ -28,7 +23,6 @@ fn get_sum(comptime path: []const u8) !u32 {
 
     // stuff instructions into easy to use reference data structure
     const instruction_set = sections.next();
-    // std.debug.print("instructions: {?c} \n\n", .{instruction_set});
     var lines = std.mem.splitScalar(u8, instruction_set.?, '\n');
     while (lines.next()) |line| {
         var num_pair = std.mem.splitScalar(u8, line, '|');
@@ -46,16 +40,13 @@ fn get_sum(comptime path: []const u8) !u32 {
     }
 
     // print instruction manual if needed
-    // const key: u32 = 29;
-    // std.debug.print("29: {d}\n", .{instruction_manual.get(key).?.items});
-    var manual_iter = instruction_manual.keyIterator();
-    while (manual_iter.next()) |first_num| {
-        std.debug.print("second_nums: {d}\n", .{instruction_manual.get(first_num.*).?.items});
-    }
+    // var manual_iter = instruction_manual.keyIterator();
+    // while (manual_iter.next()) |first_num| {
+    //     std.debug.print("second_nums: {d}\n", .{instruction_manual.get(first_num.*).?.items});
+    // }
 
     // parse through updates
     const update_set = sections.next();
-    // std.debug.print("updates: {?c} \n\n", .{update_set});
     var update_lines = std.mem.splitScalar(u8, update_set.?, '\n');
     while (update_lines.next()) |line| {
         var invalid_line = false;
@@ -98,21 +89,15 @@ fn get_sum(comptime path: []const u8) !u32 {
             var new_num_list = update_nums.items;
             while (invalid_line) {
                 // reorder properly, could do it above too instead
-
-                // can just move the number forward one by one until it's valid. Not efficient, but who cares
-                // assume only one num is invalid for now
-                // ^this doesn't work because some break multiple rules and you end up in a hotswapping nightmare
-
                 const old_index = std.mem.indexOf(u32, new_num_list, &[_]u32{invalid_num.?}).?;
                 const num_to_be_swapped = new_num_list[old_index - 1];
                 new_num_list[old_index - 1] = new_num_list[old_index];
                 new_num_list[old_index] = num_to_be_swapped;
                 std.debug.print("new line is now: {any}\n", .{new_num_list});
 
+                // check for validity, repeat until valid
                 invalid_line = false;
                 invalid_num = null;
-                // check for validity
-                // repeat until valid
                 for (new_num_list, 0..) |num, index| {
                     const numbers_that_must_come_after = instruction_manual.get(num);
                     if (numbers_that_must_come_after == null) {

@@ -1,11 +1,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-// 1. create a 2d array of x, y for each character
-// 2. iterate through each location
-// 3. on each iteration look at all possible angles for the xmas to appear
-// 4. reuse the struct from yesterday
-
 pub fn main() !void {
     const sum = try get_sum("./input.txt");
     std.debug.print("sum: {d}", .{sum});
