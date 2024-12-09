@@ -2,16 +2,17 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 
 pub fn main() !void {
-    const calibration_result = try get_total_calibration_result("./test_input_solo.txt");
+    const calibration_result = try get_total_calibration_result("./input.txt");
     std.debug.print("the calibration result is: {d}", .{calibration_result});
 }
 
-const Operator = enum { mul, div, add, sub };
+const Operator = enum { mul, add };
 
 fn get_total_calibration_result(comptime path: []const u8) !u64 {
     const input = @embedFile(path);
 
-    var gpa = std.heap.ArenaAllocator.init(std.heap.page_allocator); // was getting a seg fault with the general allocator, probably should pay attention to it, but eh
+    var gpa = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
@@ -49,120 +50,162 @@ fn get_total_calibration_result(comptime path: []const u8) !u64 {
         // analyze for possible operators
         const equation_numbers = parsed_nums;
 
-        std.debug.print("parsed_nums: {d}\n ", .{equation_numbers.items});
+        // std.debug.print("parsed_nums: {d}\n", .{equation_numbers.items});
 
         // loop over every operator, modifying one by one
         // ex. 1 + 1 + 1, then 1 + 1 - 1, then 1 + 1 / 1, etc
         const total_operator_positions = equation_numbers.items.len - 1; // 2 if [1, 1, 1]
 
+        // std.debug.print("operators in before modification: {any}\n", .{operators.items});
+
+        // create operations list to go through later
+        var operations_list = ArrayList([]u8).init(allocator);
+        defer _ = operations_list.deinit();
+
+        var operators = ArrayList(u8).init(allocator);
+        defer _ = operators.deinit();
+
         // create initial operators to be modified in place
-        var operators = ArrayList(Operator).init(allocator);
-        for (0..total_operator_positions) |_| {
-            try operators.append(Operator.add);
+        const needed_op_lists = std.math.pow(usize, 2, total_operator_positions);
+        for (0..needed_op_lists) |_| {
+            for (0..total_operator_positions) |_| {
+                try operators.append('+');
+            }
+
+            try operations_list.append(try operators.toOwnedSlice());
         }
 
-        std.debug.print("operators in before modification: {any}\n", .{operators.items});
+        // for (operations_list.items) |op_list| {
+        //     std.debug.print("op_list: {c}\n", .{op_list});
+        // }
 
-        var operator_position: usize = total_operator_positions;
-        while (operator_position > 0) {
-            // update operator to test
-            operator_position -= 1;
-            for (0..4) |current_operator| {
-                operators.items[operator_position] = @enumFromInt(current_operator);
-                std.debug.print("operators in order: {any}\n", .{operators.items});
+        // want to continuously loop over the created
+        // ex. loop 1 = +++ and *++
+        // loop 2 = +*+, **+ in addition to existing +++, *++
+        // loop 3 = +**, *** in addition to existing, +++, *++, +*+, **+
 
-                // test operator, need to respect order of ops
-                // create a copy of the equation and operators so we don't modify anything while calcing intermediate results
-                var operator_list_state = operators;
-                var equation_num_state = equation_numbers;
-                var has_op = true;
-                for (0..4) |desired_operator| {
-                    while (has_op) {
-                        std.debug.print("checking for the desired operator\n", .{});
-                        for (operator_list_state.items, 0..) |op, op_index| {
-                            const usize_op: usize = @intFromEnum(op);
-                            std.debug.print("equation_num_state.items: {d}\n", .{equation_num_state.items});
-                            std.debug.print("operator_list_state.items: {any}\n", .{operator_list_state.items});
+        // what about for 4?
+        // ++++ and *+++
+        // +*++ and **++
+        // +**+ and ***+
+        // +*** and ****
+        // but missing +*+* and *+*+ and ++*+ and **+*
 
-                            // brute force remove any pointers to zero. Idk why they're there.
-                            var had_zero_pointer = true;
-                            while (had_zero_pointer) {
-                                for (equation_num_state.items) |num| {
-                                    if (num == 12297829382473034410) {
-                                        _ = equation_num_state.orderedRemove(op_index + 1);
-                                        had_zero_pointer = true;
-                                        break;
-                                    } else {
-                                        had_zero_pointer = false;
-                                    }
-                                }
-                            }
-                            std.debug.print("equation_num_state.items after brute force remove: {d}\n", .{equation_num_state.items});
+        // so how do we get
+        // ++++ and *+++
+        // +*++ and **++
 
-                            if (desired_operator == usize_op) {
-                                var intermediate_result: ?u64 = null;
-                                switch (op) {
-                                    Operator.mul => {
-                                        intermediate_result = equation_num_state.items[op_index] * equation_num_state.items[op_index + 1];
-                                        std.debug.print("intermediate result {?d} found by {d} * {d}\n", .{ intermediate_result, equation_num_state.items[op_index], equation_num_state.items[op_index + 1] });
-                                    },
-                                    Operator.div => {
-                                        intermediate_result = equation_num_state.items[op_index] / equation_num_state.items[op_index + 1];
-                                        std.debug.print("intermediate result {?d} found by {d} / {d}\n", .{ intermediate_result, equation_num_state.items[op_index], equation_num_state.items[op_index + 1] });
-                                    },
-                                    Operator.add => {
-                                        intermediate_result = equation_num_state.items[op_index] + equation_num_state.items[op_index + 1];
-                                        std.debug.print("intermediate result {?d} found by {d} + {d}\n", .{ intermediate_result, equation_num_state.items[op_index], equation_num_state.items[op_index + 1] });
-                                    },
-                                    Operator.sub => {
-                                        intermediate_result = equation_num_state.items[op_index] - equation_num_state.items[op_index + 1];
-                                        std.debug.print("intermediate result {?d} found by {d} - {d}\n", .{ intermediate_result, equation_num_state.items[op_index], equation_num_state.items[op_index + 1] });
-                                    },
-                                }
+        // ++*+ and *+*+ and +**+ and ***+
 
-                                // update state with the intermediate result
-                                std.debug.print("equation_num_state.items before remove: {any}\n", .{equation_num_state.items});
+        // +++* and *++* and +*+* and **+* and ++** and *+** and +*** and ****
+        // this is done by looping through all the previous ones and modifying each index to be the opposite of what it currently is
+        // total loops is number of operations
 
-                                _ = equation_num_state.orderedRemove(op_index + 1);
-                                equation_num_state.items[op_index] = intermediate_result.?;
-                                _ = operator_list_state.orderedRemove(op_index);
-
-                                std.debug.print("equation_num_state.items after remove: {any}\n", .{equation_num_state.items});
-
-                                break; // list has been updated, so we can't continue
-                            }
-
-                            if (op_index == operator_list_state.items.len - 1) {
-                                std.debug.print("no more of this op in the list: {any}\n", .{op});
-                                has_op = false; // move on to searching for the next op
-                            }
-                        }
-
-                        if (operator_list_state.items.len == 0) {
-                            std.debug.print("we've calced a final result to test against\n", .{});
-                            has_op = false; // move on to searching for the next op
-                            break;
-                        }
-                    }
+        // manually create each list given the pattern needed, probably will fail for part 2, but mem leaks and seg faults be holding me back
+        // ex.
+        // individual_op_list: { +, +, +, +, +, + }
+        // individual_op_list: { *, +, +, +, +, + }
+        // individual_op_list: { +, *, +, +, +, + }
+        // individual_op_list: { *, *, +, +, +, + }
+        // individual_op_list: { +, +, *, +, +, + }
+        // individual_op_list: { *, +, *, +, +, + }
+        // individual_op_list: { +, *, *, +, +, + }
+        // individual_op_list: { *, *, *, +, +, + }
+        for (0..total_operator_positions) |op_index| {
+            const flip_op_interval = std.math.pow(usize, 2, op_index);
+            // std.debug.print("flip_op_interval: {d}\n", .{flip_op_interval});
+            var flip_count: usize = 0;
+            var should_flip = false;
+            for (0..operations_list.items.len) |list_index| {
+                if (flip_count == flip_op_interval) {
+                    should_flip = !should_flip;
+                    flip_count = 0;
                 }
+                flip_count += 1;
 
-                std.debug.print("equation resulted in: {any}\n", .{equation_num_state.items[0]});
-
-                if (result == equation_num_state.items[0]) {
-                    calibration_result += result;
-                    operator_position = 0;
-                    break; // just one proper result to make the line count
+                // std.debug.print("should_flip: {d}\n", .{list_index % flip_op_interval});
+                if (should_flip) {
+                    operations_list.items[list_index][op_index] = '*';
                 }
+            }
+        }
+
+        // // print to confirm ops list
+        // for (operations_list.items) |op_list| {
+        //     std.debug.print("op_list: {c}\n", .{op_list});
+        // }
+
+        // evaluate each op list to get a result and compare
+        var intermediate_result: ?u64 = null;
+        for (operations_list.items) |individual_op_list| {
+            for (individual_op_list, 0..) |op, op_index| {
+                // std.debug.print("equation_numbers.items: {d}\n", .{equation_numbers.items});
+                // std.debug.print("individual_op_list.items: {any}\n", .{individual_op_list});
+                switch (op) {
+                    '*' => {
+                        if (op_index == 0) {
+                            intermediate_result = equation_numbers.items[op_index] * equation_numbers.items[op_index + 1];
+                        } else {
+                            intermediate_result.? *= equation_numbers.items[op_index + 1];
+                        }
+                        // std.debug.print("intermediate result {?d} found by {d} * {d}\n", .{ intermediate_result, equation_numbers.items[op_index], equation_numbers.items[op_index + 1] });
+                    },
+                    '+' => {
+                        if (op_index == 0) {
+                            intermediate_result = equation_numbers.items[op_index] + equation_numbers.items[op_index + 1];
+                        } else {
+                            intermediate_result.? += equation_numbers.items[op_index + 1];
+                        }
+                        // std.debug.print("intermediate result {?d} found by {d} + {d}\n", .{ intermediate_result, equation_numbers.items[op_index], equation_numbers.items[op_index + 1] });
+                    },
+                    else => {
+                        // do nothing
+                    },
+                }
+            }
+            if (result == intermediate_result) {
+                calibration_result += result;
+                break; // just one proper result to make the line count
             }
         }
     }
 
-    std.debug.print("\n------\n\n", .{});
+    // std.debug.print("\n------\n\n", .{});
 
     return calibration_result;
 }
 
+// given 3 ops
+// + + + c c c
+// + + * c c c
+// + * + c
+// + * * c c
+// * + + c
+// * + * -- why don't I get this one?
+// * * + c
+// * * * c
+
 test "simple test" {
     const calibration_result = try get_total_calibration_result("./test_input.txt");
     try std.testing.expectEqual(@as(u32, 3749), calibration_result);
+}
+
+test "simple test 2" {
+    const calibration_result = try get_total_calibration_result("./test_input_2.txt");
+    try std.testing.expectEqual(@as(u32, 194558), calibration_result);
+}
+
+test "simple test solo" {
+    const calibration_result = try get_total_calibration_result("./test_input_solo.txt");
+    try std.testing.expectEqual(@as(u32, 190), calibration_result);
+}
+
+test "simple test 3 operands" {
+    const calibration_result = try get_total_calibration_result("./test_input_3_operands.txt");
+    try std.testing.expectEqual(@as(u32, 3267), calibration_result);
+}
+
+test "simple test 4 operands" {
+    const calibration_result = try get_total_calibration_result("./test_input_4_operands.txt");
+    try std.testing.expectEqual(@as(u32, 292), calibration_result);
 }
