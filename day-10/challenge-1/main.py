@@ -1,68 +1,114 @@
 import numpy as np
+import pandas as pd
 
-# parse and create the block list from the disk map
-initial_list = []
-id = 0
-is_free_space = False
-with open("day-9/challenge-1/test_input_2.txt") as file:
-    for char in file.read():
-        # print(char, end="")
-        for i in range(int(char)):
-            if is_free_space:
-                initial_list.append(-1) # represents '.'
-            else:
-                initial_list.append(id)
-        is_free_space = not is_free_space
-        if not is_free_space:
-            id += 1
-    # print("")
-
-block_list = np.array(initial_list)
-
-def print_block_list(list):
-    for num in list:
-        if num == -1:
-            print(".", end="")
-        else:
-            print(num, end="")
-        print(" ", end="")
-    print("")
-
-# print_block_list(block_list)
-
-# rearrange the block list as appropriate
-for i, num in enumerate(block_list):
-    if num == -1:
-        # see if we're at the end or not
-        is_done = True
-        for k in range(i, len(block_list) - 1):
-            if block_list[k] != -1:
-                is_done = False
-
-        if is_done:
-            break
-
-        # find last digit from the right
-        replacement_offset = 0
-        for j, num_from_end in enumerate(reversed(block_list)):
-            if num_from_end != -1:
-                replacement_offset = j
+# parse and create traversable array
+list = []
+with open("day-10/challenge-1/input.txt") as file:
+    for line in file:
+        line_list = []
+        for char in line:
+            if char == ".":
+                line_list.append(-1)
+            elif char == "\n":
                 break
-        
-        # perform the swap
-        print("performing a swap")
-        block_list[i], block_list[len(block_list) - 1 - replacement_offset] = block_list[len(block_list) - 1 - replacement_offset], block_list[i],
-        
-# print_block_list(block_list)
+            else:
+                line_list.append(int(char))
+        list.append(line_list)
 
-print("going to calc checksum")
+topomap = np.array(list)
+# print(topomap)
 
-# calc checksum
-checksum = 0
-for i, num in enumerate(block_list):
-    if num == -1:
-        break
+trailheads = np.asarray(np.where(topomap == 0)).T
+# print(trailheads)
 
-    checksum += num * i
+trailheads_df = pd.DataFrame(trailheads, columns=['row', 'col'])
+trailheads_df['score'] = 0
+# print(trailheads_df)
 
-print(checksum)
+# traverse
+for i in range(len(trailheads_df)): # apparently we shouldn't iterate over a dataframe. too late
+    trailhead = trailheads_df.iloc[i]
+    # print(trailhead)
+
+    # look at adjacent paths
+    next_paths = pd.DataFrame({'row': [trailhead['row']], 'col': [trailhead['col']], 'value': 0})
+    # print(next_paths)
+
+    located_peaks = pd.DataFrame({'row': [-1], 'col': [-1]})
+
+    for look_for in range(1, 10):
+        paths_to_check = next_paths[next_paths['value'] == look_for - 1]
+
+        for index, current_loc in paths_to_check.iterrows():
+            # print("current_loc: " + str(current_loc))
+            look_at_row = current_loc['row'] - 1
+            look_at_col = current_loc['col']
+            if look_at_row >= 0:
+                adjacent_path = topomap[look_at_row][look_at_col]
+                if adjacent_path == look_for:
+                    loc_peaks = np.array([look_at_row, look_at_col])
+                    if not (located_peaks == loc_peaks).all(1).any():
+                        df = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col], 'value': [adjacent_path]})
+                        next_paths = pd.concat([next_paths, df], ignore_index=True)
+                        if adjacent_path == 9:
+                            df2 = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col]})
+                            located_peaks = pd.concat([located_peaks, df2], ignore_index=True)
+                            # print("found looking up, adding row: " + str(df2))
+                    # else:
+                    #     print("already visited loc looking up: (" + str(look_at_row) + "," + str(look_at_col) + ")")
+
+            look_at_row = current_loc['row']
+            look_at_col = current_loc['col'] + 1
+            if look_at_col < topomap.shape[1]:
+                adjacent_path = topomap[look_at_row][look_at_col]
+                if adjacent_path == look_for:
+                    loc_peaks = np.array([look_at_row, look_at_col])
+                    if not (located_peaks == loc_peaks).all(1).any():
+                        df = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col], 'value': [adjacent_path]})
+                        next_paths = pd.concat([next_paths, df], ignore_index=True)
+                        if adjacent_path == 9:
+                            df2 = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col]})
+                            located_peaks = pd.concat([located_peaks, df2], ignore_index=True)
+                            # print("found looking right, adding row: " + str(df2))
+                    # else:
+                    #     print("already visited loc looking right: (" + str(look_at_row) + "," + str(look_at_col) + ")")
+
+            look_at_row = current_loc['row'] + 1
+            look_at_col = current_loc['col']
+            if look_at_row < topomap.shape[0]:
+                adjacent_path = topomap[look_at_row][look_at_col]
+                if adjacent_path == look_for:
+                    loc_peaks = np.array([look_at_row, look_at_col])
+                    if not (located_peaks == loc_peaks).all(1).any():
+                        df = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col], 'value': [adjacent_path]})
+                        next_paths = pd.concat([next_paths, df], ignore_index=True)
+                        if adjacent_path == 9:
+                            df2 = pd.DataFrame({'row': [look_at_row], 'col': [look_at_col]})
+                            located_peaks = pd.concat([located_peaks, df2], ignore_index=True)
+                    #         print("found looking down, adding row: " + str(df2))
+                    # else:
+                    #     print("already visited loc looking down: (" + str(look_at_row) + "," + str(look_at_col) + ")")
+            
+            look_at_row = current_loc['row']
+            look_at_col = current_loc['col'] - 1
+            if look_at_col >= 0:
+                adjacent_path = topomap[look_at_row][look_at_col]
+                if adjacent_path == look_for:
+                    loc_peaks = np.array([look_at_row, look_at_col])
+                    if not (located_peaks == loc_peaks).all(1).any():
+                        df = pd.DataFrame({'row': [look_at_row], 'col' : [look_at_col], 'value': [adjacent_path]})
+                        next_paths = pd.concat([next_paths, df], ignore_index=True)
+                        if adjacent_path == 9:
+                            df2 = pd.DataFrame({'row': [look_at_row], 'col' : [look_at_col]})
+                            located_peaks = pd.concat([located_peaks, df2], ignore_index=True)
+                    #         print("found looking left, adding row: " + str(df2))
+                    # else:
+                    #     print("already visited looking left: (" + str(look_at_row) + "," + str(look_at_col) + ")")
+    # print(next_paths)
+    # print(located_peaks)
+    trailheads_df.at[i, 'score'] = len(next_paths[next_paths['value'] == 9])
+
+# print(trailheads_df)
+
+# sum scores
+print("score: " + str(trailheads_df['score'].sum()))
