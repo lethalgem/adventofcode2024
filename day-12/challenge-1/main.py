@@ -1,9 +1,8 @@
 import pandas as pd
-import numpy as np
 
 # Open and read file in data structure
 garden_map = []
-file = open("day-12/challenge-1/input.txt")
+file = open("day-12/challenge-1/test_input_216.txt")
 for line in file:
     garden_map.append(list(line.strip()))
 # print(garden_map)
@@ -61,7 +60,7 @@ for i, garden_row in enumerate(garden_map):
         # if we're not in the list at all, then we start a new region
 
         # see if we're already marked as a plot in a region and we should continue that region
-        df_index = local_region_tracker.get((i, j), len(region_info_df))  
+        df_index = local_region_tracker.get((i, j), len(region_info_df))
         print((i, j))
 
         df_row = pd.DataFrame({"plot_name": [plot_name], "area": 1, "perimeter": fences_around_plot})
@@ -75,7 +74,7 @@ for i, garden_row in enumerate(garden_map):
         # print(df_row)
 
         # see if the plot below is part of the region and should be tracked
-        if (i < len(garden_row) - 1):
+        if (i < len(garden_map) - 1):
             if garden_map[i + 1][j] == plot_name and local_region_tracker.get((i + 1, j)) is None:
                 # print("looked down, updating area to " +  str(df_row['area'] + 1))
                 region_info_df.at[df_index, "area"] = df_row["area"] + 1
@@ -83,7 +82,7 @@ for i, garden_row in enumerate(garden_map):
                 df_row = region_info_df.iloc[df_index]
 
                 # We're scanning down and to the right. So we can miss plots that are down and to the left
-                # So if we something below us, we'll see how many contiguous plots to our left are part of the same region
+                # So if we something below us, we'll see how many continguous plots are to the left
                 for index in range(j - 1, -1, -1):
                     # print("index: " + str(index))
                     if garden_map[i + 1][index] == plot_name and local_region_tracker.get((i + 1, index)) is None:
@@ -91,9 +90,34 @@ for i, garden_row in enumerate(garden_map):
                         region_info_df.at[df_index, "area"] = df_row["area"] + 1
                         local_region_tracker[(i + 1, index)] = df_index
                         df_row = region_info_df.iloc[df_index]
+                    elif garden_map[i + 1][index] == plot_name and local_region_tracker.get((i + 1, index)) is not df_index:
+                        # while looking for a continuous piece of the current region, we found one that has been categorized as a part
+                        # of a another region. So we need to override the current one and merge it into the other
+                        existing_region_info_df_index = local_region_tracker.get((i + 1, index))
+                        existing_region_area = region_info_df.at[existing_region_info_df_index, "area"]
+                        existing_region_perimeter = region_info_df.at[existing_region_info_df_index, "perimeter"]
+
+                        merged_region_area = df_row["area"] + existing_region_area
+                        merged_region_perimeter = df_row["perimeter"] + existing_region_perimeter
+
+                        region_info_df.at[existing_region_info_df_index, "area"] = merged_region_area
+                        region_info_df.at[existing_region_info_df_index, "perimeter"] = merged_region_perimeter
+                        region_info_df = region_info_df.drop(df_index)
+
+                        # reset the local_region_tracker
+                        local_region_tracker[(i, j)] = existing_region_info_df_index
+                        for old_index in range(index, j + 1):
+                            local_region_tracker[(i + 1, old_index)] = existing_region_info_df_index
+                        
+                        # we only need to merge once, the first time we touch the same region
+                        # the search is over, anything to the left is irrelevant
+                        break
+
 
         # see if we're continuing the region to the right
-        if (j == len(garden_map) - 1):
+        print("len(garden_map): " + str(len(garden_map)))
+        print("garden_map: " + str(garden_map))
+        if (j == len(garden_row) - 1):
             # clear the row before, to preserve memory. We only store the current garden_row and the next garden_row positions at a given time
             # we've already counted this as part of a region or started a new one, so nothing to add
             keys_to_remove = []
