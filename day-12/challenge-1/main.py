@@ -23,7 +23,8 @@ def get_price(file_path: str):
     # By keeping track of the row below, we know there are two regions of B
     # We know we're done tracking a region if we haven't seen anything to the right of below for that region
 
-    region_info_df = pd.DataFrame() # 'plot_name', 'count'
+    # region_info_df = pd.DataFrame() # 'plot_name', 'count'
+    region_info_tuples = [] # (plot_name, area, perimeter)
     local_region_tracker = {} # {(row, col) : region_info_df_index}
     for i, garden_row in enumerate(garden_map):
         for j, plot_name in enumerate(garden_row):
@@ -62,29 +63,31 @@ def get_price(file_path: str):
             # if we're not in the list at all, then we start a new region
 
             # see if we're already marked as a plot in a region and we should continue that region
-            df_index = local_region_tracker.get((i, j), len(region_info_df))
+            region_index = local_region_tracker.get((i, j), len(region_info_tuples))
             print((i, j))
-            # print(region_info_df)
+            print(region_info_tuples)
 
-            df_row = pd.DataFrame({"plot_name": [plot_name], "area": 1, "perimeter": fences_around_plot})
-            if df_index == len(region_info_df):
+            row_tuple = (plot_name, 1, fences_around_plot) # (plot_name, area, perimeter)
+            if region_index == len(region_info_tuples):
                 # print("this location wasn't in the tracker, creating a new region")
-                region_info_df = pd.concat([region_info_df, df_row], ignore_index=True)
+                region_info_tuples.append(row_tuple)
             else:
                 # print("currently tracking this region")
-                df_row = region_info_df.iloc[df_index]
-                print(df_index)
-                region_info_df.at[df_index, "perimeter"] += fences_around_plot
-            print("df_row: " + str(df_row))
-            print("df_row area: " + str(df_row.at[0,"area"]))
+                row_tuple = region_info_tuples[region_index]
+                temp_tuple = region_info_tuples[region_index]
+                region_info_tuples[region_index] = (temp_tuple[0], temp_tuple[1], (temp_tuple[2] + fences_around_plot))
+            print("region_index: " + str(region_index))
+            print("row_tuple: " + str(row_tuple))
+            print("row_tuple area: " + str(row_tuple[1]))
 
             # see if the plot below is part of the region and should be tracked
             if (i < len(garden_map) - 1):
                 if garden_map[i + 1][j] == plot_name and local_region_tracker.get((i + 1, j)) is None:
                     # print("looked down, updating area to " +  str(df_row['area'] + 1))
-                    region_info_df.at[df_index, "area"] = df_row[0, "area"] + 1
-                    local_region_tracker[(i + 1, j)] = df_index
-                    df_row = region_info_df.iloc[df_index]
+                    temp_tuple = region_info_tuples[region_index]
+                    region_info_tuples[region_index] = (temp_tuple[0], temp_tuple[1] + 1, temp_tuple[2])
+                    local_region_tracker[(i + 1, j)] = region_index
+                    row_tuple = region_info_tuples[region_index]
 
                     # We're scanning down and to the right. So we can miss plots that are down and to the left
                     # So if we something below us, we'll see how many continguous plots are to the left
@@ -92,30 +95,35 @@ def get_price(file_path: str):
                         # print("index: " + str(index))
                         if garden_map[i + 1][index] == plot_name and local_region_tracker.get((i + 1, index)) is None:
                             # print("looked down and to the left, updating area to " +  str(df_row['area'] + 1))
-                            region_info_df.at[df_index, "area"] = df_row[0, "area"] + 1
-                            local_region_tracker[(i + 1, index)] = df_index
-                            df_row = region_info_df.iloc[df_index]
-                        elif garden_map[i + 1][index] == plot_name and local_region_tracker.get((i + 1, index)) is not df_index:
+                            temp_tuple = region_info_tuples[region_index]
+                            region_info_tuples[region_index] = (temp_tuple[0], temp_tuple[1] + 1, temp_tuple[2])
+                            local_region_tracker[(i + 1, index)] = region_index
+                            row_tuple = region_info_tuples[region_index]
+                        elif garden_map[i + 1][index] == plot_name and local_region_tracker.get((i + 1, index)) is not region_index:
                             # while looking for a continuous piece of the current region, we found one that has been categorized as a part
                             # of a another region. So we need to override the current one and merge it into the other
-                            existing_region_info_df_index = local_region_tracker.get((i + 1, index))
-                            existing_region_area = region_info_df.at[existing_region_info_df_index, "area"]
-                            existing_region_perimeter = region_info_df.at[existing_region_info_df_index, "perimeter"]
+                            existing_region_index = local_region_tracker.get((i + 1, index))
+                            existing_region_area = region_info_tuples[existing_region_index][1]
+                            existing_region_perimeter = region_info_tuples[existing_region_index][2]
 
-                            merged_region_area = df_row[0, "area"] + existing_region_area
-                            merged_region_perimeter = df_row["perimeter"] + existing_region_perimeter
+                            merged_region_area = row_tuple[1] + existing_region_area
+                            merged_region_perimeter = row_tuple[2] + existing_region_perimeter
 
-                            region_info_df.at[existing_region_info_df_index, "area"] = merged_region_area
-                            region_info_df.at[existing_region_info_df_index, "perimeter"] = merged_region_perimeter
-                            region_info_df = region_info_df.drop(df_index)
+                            temp_tuple = region_info_tuples[existing_region_index]
+                            region_info_tuples[existing_region_index] = (temp_tuple[0], merged_region_area, merged_region_perimeter)
+                            del region_info_tuples[region_index]
+                            region_index = existing_region_index
 
                             # reset the local_region_tracker
-                            local_region_tracker[(i, j)] = existing_region_info_df_index
+                            local_region_tracker[(i, j)] = existing_region_index
                             for old_index in range(index, j + 1):
-                                local_region_tracker[(i + 1, old_index)] = existing_region_info_df_index
+                                local_region_tracker[(i + 1, old_index)] = existing_region_index
 
                             # we only need to merge once, the first time we touch the same region
                             # the search is over, anything to the left is irrelevant
+                            break
+                        else:
+                            # no plot with the same name was found
                             break
 
 
@@ -132,21 +140,21 @@ def get_price(file_path: str):
                 # print(local_region_tracker)
             elif garden_map[i][j + 1] == plot_name and local_region_tracker.get((i, j + 1)) is None:
                     # print("looked right, updating area to " + str(df_row['area'] + 1))
-                    region_info_df.at[df_index, "area"] = df_row[0, "area"] + 1
-                    local_region_tracker[(i, j + 1)] = df_index
-                    df_row = region_info_df.iloc[df_index]
+                    temp_tuple = region_info_tuples[region_index]
+                    region_info_tuples[region_index] = (temp_tuple[0], temp_tuple[1] + 1, temp_tuple[2])
+                    local_region_tracker[(i, j + 1)] = region_index
+                    row_tuple = region_info_tuples[region_index]
 
             # print("-----")
     # print(region_info_df)
 
     # calc total price
     print("calcing price")
-    zipped = list(zip(region_info_df["area"].values, region_info_df["perimeter"].values))
     price = 0
-    for area, perimeter in zipped:
+    for _, area, perimeter in region_info_tuples:
         price += area * perimeter
 
     return price
 
-# price = get_price("day-12/challenge-1/input.txt")
-# print(price)
+price = get_price("day-12/challenge-1/input.txt")
+print(price)
